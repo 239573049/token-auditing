@@ -7,19 +7,19 @@ namespace Token.Auditing;
 
 public class AuditingMiddleware : IMiddleware, ITransientDependency
 {
-    private readonly TokenAspNetCoreAuditingOptions tokenAspNetCoreAuditingOptions;
-    private readonly TokenAuditingOptions tokenAuditingOptions;
+    private readonly TokenAspNetCoreAuditingOptions _tokenAspNetCoreAuditingOptions;
+    private readonly TokenAuditingOptions _tokenAuditingOptions;
 
     public AuditingMiddleware(IOptions<TokenAspNetCoreAuditingOptions> tokenAspNetCoreAuditingOptions,
-                              IOptions<TokenAuditingOptions> tokenAuditingOptions)
+        IOptions<TokenAuditingOptions> tokenAuditingOptions)
     {
-        this.tokenAspNetCoreAuditingOptions = tokenAspNetCoreAuditingOptions.Value;
-        this.tokenAuditingOptions = tokenAuditingOptions.Value;
+        _tokenAspNetCoreAuditingOptions = tokenAspNetCoreAuditingOptions.Value;
+        _tokenAuditingOptions = tokenAuditingOptions.Value;
     }
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        if (!tokenAuditingOptions.IsEnabled || IsIgnoredUrl(context))
+        if (!_tokenAuditingOptions.IsEnabled || IsIgnoredUrl(context))
         {
             await next(context).ConfigureAwait(false);
         }
@@ -28,29 +28,21 @@ public class AuditingMiddleware : IMiddleware, ITransientDependency
             var startNew = Stopwatch.StartNew();
             try
             {
-                Console.WriteLine($"[debug] {tokenAuditingOptions.ApplicationName} {DateTime.Now:yyyy-MM-dd HH:mm:ss} Path： {context.Request.Path} " +
-                                  $"{GetQuery(context.Request.QueryString)}");
+                _tokenAuditingOptions.StartAuditing(new AuditingHttp(_tokenAuditingOptions.ApplicationName,
+                    context.Request.Path, context.Request.QueryString));
                 await next(context).ConfigureAwait(false);
-                Console.WriteLine($"[debug] {tokenAuditingOptions.ApplicationName} {DateTime.Now:yyyy-MM-dd HH:mm:ss} Path： {context.Request.Path} {GetQuery(context.Request.QueryString)} " +
-                                  $"耗时：{startNew.Elapsed.TotalMilliseconds} ms");
+                _tokenAuditingOptions.EndAuditing(new AuditingHttp(_tokenAuditingOptions.ApplicationName,
+                    context.Request.Path, context.Request.QueryString, startNew.Elapsed.TotalMilliseconds));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[debug] {tokenAuditingOptions.ApplicationName} {DateTime.Now:yyyy-MM-dd HH:mm:ss} Path： {context.Request.Path} {GetQuery(context.Request.QueryString)} " +
-                                  $"异常》{ex+Environment.NewLine}" +
-                                  $"耗时：{startNew.Elapsed.TotalMilliseconds} ms");
-                if (!tokenAuditingOptions.IsError)
-                {
-                    throw ex;
-                }
+                _tokenAuditingOptions.ErrorAuditing(new ErrorAuditing(_tokenAuditingOptions.ApplicationName,
+                    context.Request.Path, context.Request.QueryString, ex, startNew.Elapsed.TotalMilliseconds));
             }
         }
     }
 
-    private string GetQuery(QueryString queryString)
-        => queryString.HasValue ? "Query：" + queryString : string.Empty;
-
     private bool IsIgnoredUrl(HttpContext context) => context.Request.Path.Value != null &&
-                                                      tokenAspNetCoreAuditingOptions.IgnoredUrls.Any(x => context
+                                                      _tokenAspNetCoreAuditingOptions.IgnoredUrls.Any(x => context
                                                           .Request.Path.Value.StartsWith(x));
 }
