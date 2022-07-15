@@ -1,7 +1,7 @@
 # TokenModule
 
-[![NuGet](https://img.shields.io/nuget/dt/Token.Auditing/.svg?label=NuGet&style=flat&logo=nuget)](https://www.nuget.org/packages/Token.Auditing//)
-[![NuGet](https://img.shields.io/nuget/v/Token.Auditing/.svg?label=NuGet&style=flat&logo=nuget)](https://www.nuget.org/packages/Token.Auditing//)
+[![NuGet](https://img.shields.io/nuget/dt/Token.Auditing.svg?label=NuGet&style=flat&logo=nuget)](https://www.nuget.org/packages/Token.Auditing//)
+[![NuGet](https://img.shields.io/nuget/v/Token.Auditing.svg?label=NuGet&style=flat&logo=nuget)](https://www.nuget.org/packages/Token.Auditing//)
 
 ## 介绍
 
