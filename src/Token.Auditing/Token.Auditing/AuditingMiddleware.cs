@@ -8,15 +8,13 @@ namespace Token.Auditing;
 
 public class AuditingMiddleware : IMiddleware, ITransientDependency
 {
-    private readonly TokenAspNetCoreAuditingOptions tokenAspNetCoreAuditingOptions;
-    private readonly TokenAuditingOptions tokenAuditingOptions;
-
-    public AuditingMiddleware(IOptions<TokenAspNetCoreAuditingOptions> tokenAspNetCoreAuditingOptions,
+    private readonly TokenAuditingOptions _tokenAuditingOptions;
+    private readonly ILogger<AuditingMiddleware> _logger;
+    public AuditingMiddleware(
                               IOptions<TokenAuditingOptions> tokenAuditingOptions,
                               ILogger<AuditingMiddleware> logger)
     {
-        this.tokenAspNetCoreAuditingOptions = tokenAspNetCoreAuditingOptions.Value;
-        this.tokenAuditingOptions = tokenAuditingOptions.Value;
+        _tokenAuditingOptions = tokenAuditingOptions.Value;
         _logger = logger;
     }
 
@@ -31,20 +29,21 @@ public class AuditingMiddleware : IMiddleware, ITransientDependency
             var startNew = Stopwatch.StartNew();
             try
             {
-                Console.WriteLine($"[debug] {tokenAuditingOptions.ApplicationName} {DateTime.Now:yyyy-MM-dd HH:mm:ss} Path： {context.Request.Path} " +
-                                  $"{GetQuery(context.Request.QueryString)}");
+                _logger.LogInformation("{ApplicationName} {DateTime} Path： {Path} {query}",_tokenAuditingOptions.ApplicationName,DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                                  context.Request.Path, GetQuery(context.Request.QueryString));
                 await next(context).ConfigureAwait(false);
 
                 _logger.LogInformation("{ApplicationName} {DateTime} Path： {Path} {query} " +
-                                  "耗时：{TotalMilliseconds} ms",tokenAuditingOptions.ApplicationName,DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                                  "耗时：{TotalMilliseconds} ms",_tokenAuditingOptions.ApplicationName,DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                                   context.Request.Path, GetQuery(context.Request.QueryString),startNew.Elapsed.TotalMilliseconds);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[debug] {tokenAuditingOptions.ApplicationName} {DateTime.Now:yyyy-MM-dd HH:mm:ss} Path： {context.Request.Path} {GetQuery(context.Request.QueryString)} " +
-                                  $"异常》{ex+Environment.NewLine}" +
-                                  $"耗时：{startNew.Elapsed.TotalMilliseconds} ms");
-                if (!tokenAuditingOptions.IsError)
+                
+                _logger.LogError("{ApplicationName} {DateTime} Path： {Path} {query} {NewLine} {Exception}" +
+                                  "耗时：{TotalMilliseconds} ms",_tokenAuditingOptions.ApplicationName,DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                                  context.Request.Path, GetQuery(context.Request.QueryString),Environment.NewLine,ex,startNew.Elapsed.TotalMilliseconds);
+                if (!_tokenAuditingOptions.IsError)
                 {
                     throw ex;
                 }
@@ -56,6 +55,6 @@ public class AuditingMiddleware : IMiddleware, ITransientDependency
         => queryString.HasValue ? "Query：" + queryString : string.Empty;
 
     private bool IsIgnoredUrl(HttpContext context) => context.Request.Path.Value != null &&
-                                                      _tokenAspNetCoreAuditingOptions.IgnoredUrls.Any(x => context
+                                                      _tokenAuditingOptions.IgnoredUrls.Any(x => context
                                                           .Request.Path.Value.StartsWith(x));
 }
